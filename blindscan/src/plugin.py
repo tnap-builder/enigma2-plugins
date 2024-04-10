@@ -794,6 +794,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				orb = tmp_list[0][0]
 				self.orb_pos_now = 3600 - orb
 				self.orb_pos_now = self.orb_pos_now /10
+				self.openFrontend()
 				self.tuner.tune(transponder)
 		if cur and (cur == self.tunerEntry or cur == self.satelliteEntry or cur == self.onlyUnknownTpsEntry or cur == self.userDefinedLnbInversionEntry):
 			self.createSetup()
@@ -829,7 +830,9 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		if self.clockTimer:
 			self.clockTimer.stop()
 		self.statusTimer.stop()
-		self.releaseFrontend()
+#		self.releaseFrontend()
+		self.openFrontend() #self.openFrontend():
+		print("#### 834----BlindScanSessionClose! self.openFrontend")
 		self.session.nav.playService(self.session.postScanService)
 		self.close(False)
 
@@ -964,9 +967,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			self.clockTimer.start(500)
 
 	def doClock(self):
-#		print "[Blindscan][doClock] started"
 		is_scan = False
-#		print "[Blindscan][doClock] self.is_runable", self.is_runable
 		if self.is_runable:
 			if self.running_count >= self.max_count:
 				self.clockTimer.stop()
@@ -1890,7 +1891,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			idx_selected_sat = int(self.getSelectedSatIndex(self.scan_nims.value))
 			tmp_list = [self.satList[int(self.scan_nims.value)][self.scan_satselection[idx_selected_sat].index]]
 			orb = tmp_list[0][0]
-			print("[Blindscan][getOrbPos] orb = ", orb)
+#			print("[Blindscan][getOrbPos] orb = ", orb)
 		except:
 			orb = -9999
 			print("[Blind scan][getOrbPos] error parsing orb")
@@ -1956,8 +1957,10 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				config.misc.lastrotorposition.value = self.orb_pos
 				config.misc.lastrotorposition.save()
 			if self.orb_pos_now != orb_pos or self.signaltp4 == 1:
+#				for x in range(2):
+#					self.newConfig()
 				print("########1961-Blindscan---rotorstatus = None! (Break), self.orb_pos_now, orb_pos, self.signaltp4", self.orb_pos_now, orb_pos, self.signaltp4)
-				self["rotorstatus"].setText("")
+#				self["rotorstatus"].setText("")
 				break
 			if self.signaltp > 30 or self.signaltp < 0:
 				self.signaltp = 0
