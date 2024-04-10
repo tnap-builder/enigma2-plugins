@@ -23,6 +23,9 @@ from .filters import TransponderFiltering # imported from Blindscan folder
 #used for the XML file
 from time import strftime, time
 import os
+import Dvbcsva #                          
+import Dvbcsvb #
+
 
 BOX_MODEL = "all"
 BOX_NAME = "none"
@@ -346,6 +349,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.offset = 0
 		self.start_time = time()
 		self.orb_pos = 0
+		self.orb_pos_now = 0
 		self.is_c_band_scan = False
 		self.is_c_band_scan_5750 = False
 ####################
@@ -357,7 +361,11 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.clockTimer = eTimer()
 		self.statusTimer = eTimer()
 		self.statusTimer.callback.append(self.setDishOrbosValue)
-
+		self.signaltp = 0
+		self.signaltp1 = 0
+		self.signaltp2 = 0
+		self.signaltp4 = 0
+		self.freq =""
 		# run command
 		self.cmd = ""
 		self.bsTimer = eTimer()
@@ -781,29 +789,42 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			tps = nimmanager.getTransponders(orb_pos)
 			if len(tps) >= 1:
 				transponder = (tps[0][1] // 1000, tps[0][2] // 1000, tps[0][3], tps[0][4], 2, orb_pos, tps[0][5], tps[0][6], tps[0][8], tps[0][9], eDVBFrontendParametersSatellite.No_Stream_Id_Filter, eDVBFrontendParametersSatellite.PLS_Gold, eDVBFrontendParametersSatellite.PLS_Default_Gold_Code, eDVBFrontendParametersSatellite.No_T2MI_PLP_Id, eDVBFrontendParametersSatellite.T2MI_Default_Pid)
+				idx_selected_sat = int(self.getSelectedSatIndex(self.scan_nims.value))
+				tmp_list = [self.satList[int(self.scan_nims.value)][self.scan_satselection[idx_selected_sat].index]]
+				orb = tmp_list[0][0]
+				self.orb_pos_now = 3600 - orb
+				self.orb_pos_now = self.orb_pos_now /10
 				self.tuner.tune(transponder)
 		if cur and (cur == self.tunerEntry or cur == self.satelliteEntry or cur == self.onlyUnknownTpsEntry or cur == self.userDefinedLnbInversionEntry):
 			self.createSetup()
 		self.setBlueText()
 		config.blindscan.motor_start.value = False
+		self.getSignalLock()
 
 	def keyLeft(self):
 		ConfigListScreen.keyLeft(self)
+		self.signaltp4 = 0
+		self.orb_pos_now = 0
 		from threading import Timer
-		ts = Timer(.3, self.newConfig)
+		ts = Timer(.05, self.newConfig)
 		ts.start()
+
 
 	def keyRight(self):
 		ConfigListScreen.keyRight(self)
+		self.signaltp4 = 0
+		self.orb_pos_now = 0
 		from threading import Timer
-		ts = Timer(.3, self.newConfig)
+		ts = Timer(.05, self.newConfig)
 		ts.start()
+
 
 	def saveConfig(self):
 		for x in self["config"].list:
 			x[1].save()
 
 	def keyCancel(self):
+		self.signaltp4 = 0
 		self.saveConfig()
 		if self.clockTimer:
 			self.clockTimer.stop()
@@ -813,6 +834,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.close(False)
 
 	def keyGo(self):
+		self.signaltp4 = 1
 		self.saveConfig()
 		print("[Blindscan][keyGo] started")
 		self.start_time = time()
@@ -939,7 +961,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			band = self.total_list[self.running_count][2]
 			self.prepareScanData(orb, pol, band, True)
 		else:
-			self.clockTimer.start(1000)
+			self.clockTimer.start(500)
 
 	def doClock(self):
 #		print "[Blindscan][doClock] started"
@@ -999,8 +1021,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			else: # low band
 				tuning_frequency = random_ku_band_low_tunable_freq
 
-#		import time
-#		time.sleep(.1)
 		self.tuner.tune(
 			(tuning_frequency,
 			0, # symbolrate
@@ -1185,7 +1205,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				self.session.open(MessageBox, _("Not found blind scan utility '%s'!") % tools, MessageBox.TYPE_ERROR)
 				return
 		elif BOX_NAME.startswith("sf8008"):
-			#self.frontend and self.frontend.closeFrontend()
 			tools = "/usr/bin/octagon-blindscan"
 			if os.path.exists(tools):
 				cmd = "octagon-blindscan %d %d %d %d %d %d %d %d %d 2100" % (temp_start_int_freq, temp_end_int_freq, config.blindscan.start_symbol.value, config.blindscan.stop_symbol.value, tab_pol[pol], tab_hilow[band], self.feid, self.getNimSocket(self.feid), self.is_c_band_scan)
@@ -1438,18 +1457,13 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 					self.blindscan_session["post_action"].setText(str)
 
 	def blindscanSessionNone(self, *val):
-		import time
 		self.blindscan_container.sendCtrlC()
 		self.blindscan_container = None
-		time.sleep(2)
-
 		self.blindscan_session = None
 		self.releaseFrontend()
-
 		if val[0] == False:
 			self.tmp_tplist = []
 			self.running_count = self.max_count
-
 		self.is_runable = True
 
 	def asyncBlindScan(self):
@@ -1464,6 +1478,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.blindscan_container.execute(self.cmd)
 
 	def blindscanSessionClose(self, *val):
+		self.signaltp4 = 0
 		global XML_FILE
 		self["key_yellow"].setText("")
 		XML_FILE = None
@@ -1870,6 +1885,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		return False # LNB type not supported by this plugin
 
 	def getOrbPos(self):
+		orb = 0
 		try:
 			idx_selected_sat = int(self.getSelectedSatIndex(self.scan_nims.value))
 			tmp_list = [self.satList[int(self.scan_nims.value)][self.scan_satselection[idx_selected_sat].index]]
@@ -1887,7 +1903,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			self.close(True)
 
 	def startDishMovingIfRotorSat(self):
-		self["rotorstatus"].setText("")
 		orb_pos = self.getOrbPos()
 		self.orb_pos = 0
 		self.feid = int(self.scan_nims.value)
@@ -1919,7 +1934,76 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		if Lastrotorposition is not None and config.misc.lastrotorposition.value != 9999:
 			self.statusTimer.stop()
 			self.startStatusTimer()
+
 		return True
+
+	def getSignalLock(self):
+		self.signaltp = 0
+		self.signaltp1 = 0
+		self.signaltp2 = 0
+		cannotrun = False #This needs to be Fixed!
+		import time
+		while cannotrun == False:
+			idx_selected_sat = int(self.getSelectedSatIndex(self.scan_nims.value))
+			tmp_list = [self.satList[int(self.scan_nims.value)][self.scan_satselection[idx_selected_sat].index]]
+			orb = tmp_list[0][0] #2607
+			orb = 3600 - orb #993
+			orb = orb /10 # 99.3
+			orb_pos = self.getOrbPos()
+			orb_pos = 3600 - orb_pos
+			orb_pos = orb_pos /10
+			if self.orb_pos != 0 and self.orb_pos != config.misc.lastrotorposition.value:
+				config.misc.lastrotorposition.value = self.orb_pos
+				config.misc.lastrotorposition.save()
+			if self.orb_pos_now != orb_pos or self.signaltp4 == 1:
+				print("########1961-Blindscan---rotorstatus = None! (Break), self.orb_pos_now, orb_pos, self.signaltp4", self.orb_pos_now, orb_pos, self.signaltp4)
+				self["rotorstatus"].setText("")
+				break
+			if self.signaltp > 30 or self.signaltp < 0:
+				self.signaltp = 0
+			if self.signaltp1 > 1:
+				lock ="- Locked!"
+			time.sleep(.1)
+			if self.orb_pos_now == orb_pos:
+				text = _("%.1fW - %s(db)" %(orb_pos, self.signaltp))
+				self["rotorstatus"].setText(text)
+				self.getSignalStats()
+			else:
+				self["rotorstatus"].setText("")
+
+	def getSignalStats(self):
+		try:
+			for x in range(1):
+				if self.feid == 0:
+					if BOX_MODEL != "edision":
+						self.signaltp = Dvbcsva.fe.getSignalNoiseRatio() / 100
+						self.signaltp1 = Dvbcsva.fe.getStatus()
+						self.signaltp2 = Dvbcsva.fe.getSignalStrength()# / 1000 * 1.4
+						self.signaltp3 = Dvbcsva.fe.getBitErrorRate()# / 1000 * 1.4
+					if BOX_MODEL == "edision":
+						self.signaltp = Dvbcsva.fe.getSignalNoiseRatio() / 4456.21
+						self.signaltp1 = Dvbcsva.fe.getStatus()
+						self.signaltp2 = Dvbcsva.fe.getSignalStrength() / 819.1875
+					if BOX_MODEL == "edision" and self.size > 100000:
+						self.signaltp = Dvbcsva.fe.getSignalNoiseRatio() / 1000
+						self.signaltp1 = Dvbcsva.fe.getStatus()
+						self.signaltp2 = Dvbcsva.fe.getSignalStrength()
+				if self.feid == 1:
+					if BOX_MODEL != "edision":
+						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 100
+						self.signaltp1 = Dvbcsvb.fe.getStatus()
+						self.signaltp2 = Dvbcsvb.fe.getSignalStrength()# / 1000 * 1.4
+						self.signaltp3 = Dvbcsvb.fe.getBitErrorRate()# / 1000 * 1.4
+					if BOX_MODEL == "edision":
+						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 4456.21
+						self.signaltp1 = Dvbcsvb.fe.getStatus()
+						self.signaltp2 = Dvbcsvb.fe.getSignalStrength() / 819.1875
+					if BOX_MODEL == "edision" and self.size > 100000:
+						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 1000
+						self.signaltp1 = Dvbcsvb.fe.getStatus()
+						self.signaltp2 = Dvbcsvb.fe.getSignalStrength()
+		except:
+			pass
 
 	def OrbToStr(self, orbpos):
 		if orbpos > 1800:
@@ -1932,16 +2016,16 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			if self.orb_pos != 0 and self.orb_pos != config.misc.lastrotorposition.value:
 				config.misc.lastrotorposition.value = self.orb_pos
 				config.misc.lastrotorposition.save()
-			text = _("Moving to ") + self.OrbToStr(self.orb_pos)
-			self.startStatusTimer()
+#			text = _("Moving to ") + self.OrbToStr(self.orb_pos)
+#			self.startStatusTimer()
 #		else:
-#			text = _("Rotor: ") + self.OrbToStr(config.misc.lastrotorposition.value)
+#			text = _("Rotor:---Test ") + self.OrbToStr(config.misc.lastrotorposition.value)
 #		self["rotorstatus"].setText(text)
 
 	def startStatusTimer(self):
 		self.statusTimer.start(1000, True)
 
-	def getRotorMovingState(self):
+	def getRotorMovingState(self): #Sort of useless as this seems to only follow rotor timeout time.
 		return eDVBSatelliteEquipmentControl.getInstance().isRotorMoving()
 
 	def releaseFrontend(self):
