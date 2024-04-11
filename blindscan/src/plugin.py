@@ -1898,9 +1898,13 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		return orb
 
 	def startScanCallback(self, answer=True):
+		print("######---1901--Blindscan--startScanCallback")
+		self.releaseFrontend()
+		self.session.nav.playService(self.session.postScanService)
 		if answer:
-			self.releaseFrontend()
-			self.session.nav.playService(self.session.postScanService)
+			print("######---1903--Blindscan--startScanCallback -- Answered")
+#			self.releaseFrontend()
+#			self.session.nav.playService(self.session.postScanService)
 			self.close(True)
 
 	def startDishMovingIfRotorSat(self):
@@ -2007,7 +2011,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 						self.signaltp1 = Dvbcsvb.fe.getStatus()
 						self.signaltp2 = Dvbcsvb.fe.getSignalStrength()
 				if self.signaltp != 0:
-					print("#######--2010--Blindscan self.signaltp =", self.signaltp) 
+#					print("#######--2010--Blindscan self.signaltp =", self.signaltp) 
 					if self.signaltp < 0 or self.signaltp > 30:
 						self.signaltp = 0
 					return "%.2f" %(self.signaltp)
