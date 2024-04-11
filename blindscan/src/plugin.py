@@ -830,8 +830,8 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		if self.clockTimer:
 			self.clockTimer.stop()
 		self.statusTimer.stop()
-#		self.releaseFrontend()
-		self.openFrontend() #self.openFrontend():
+		self.releaseFrontend()
+#		self.openFrontend() #self.openFrontend():
 		print("#### 834----BlindScanSessionClose! self.openFrontend")
 		self.session.nav.playService(self.session.postScanService)
 		self.close(False)
