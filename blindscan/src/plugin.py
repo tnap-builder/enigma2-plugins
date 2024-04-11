@@ -1898,13 +1898,12 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		return orb
 
 	def startScanCallback(self, answer=True):
-		print("######---1901--Blindscan--startScanCallback")
 		self.releaseFrontend()
-		self.session.nav.playService(self.session.postScanService)
+#		self.session.nav.playService(self.session.postScanService)
 		if answer:
 			print("######---1903--Blindscan--startScanCallback -- Answered")
 #			self.releaseFrontend()
-#			self.session.nav.playService(self.session.postScanService)
+			self.session.nav.playService(self.session.postScanService)
 			self.close(True)
 
 	def startDishMovingIfRotorSat(self):
@@ -1939,7 +1938,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		if Lastrotorposition is not None and config.misc.lastrotorposition.value != 9999:
 			self.statusTimer.stop()
 			self.startStatusTimer()
-
 		return True
 
 	def getSignalLock(self):
@@ -1948,7 +1946,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.signaltp1 = 0
 		self.signaltp2 = 0
 		import time
-		while self.cannotrun == False:
+		while self.signaltp4 == 0:
 			idx_selected_sat = int(self.getSelectedSatIndex(self.scan_nims.value))
 			tmp_list = [self.satList[int(self.scan_nims.value)][self.scan_satselection[idx_selected_sat].index]]
 			orb = tmp_list[0][0] #2607
@@ -1962,12 +1960,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				config.misc.lastrotorposition.save()
 			if self.orb_pos_now != orb_pos or self.signaltp4 == 1:
 				print("########1961-Blindscan---rotorstatus = None! (Break), self.orb_pos_now, orb_pos, self.signaltp4", self.orb_pos_now, orb_pos, self.signaltp4)
-#				self["rotorstatus"].setText("")
 				break
-			if self.signaltp > 30 or self.signaltp < 0:
-				self.signaltp = 0
-			if self.signaltp1 > 1:
-				lock ="- Locked!"
 			try:
 				if self.orb_pos_now == orb_pos:
 					text = _("%.1fW - %s(db)" %(orb_pos, self.getSignalStats()))
@@ -2010,15 +2003,16 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 1000
 						self.signaltp1 = Dvbcsvb.fe.getStatus()
 						self.signaltp2 = Dvbcsvb.fe.getSignalStrength()
-				if self.signaltp != 0:
-#					print("#######--2010--Blindscan self.signaltp =", self.signaltp) 
-					if self.signaltp < 0 or self.signaltp > 30:
-						self.signaltp = 0
-					return "%.2f" %(self.signaltp)
-				else:
-					return 0
+
 		except:
 			pass
+		if self.signaltp != 0:
+			if self.signaltp < 0 or self.signaltp > 30: # Get rid of nonsense values
+				return 0
+			return ("%.2f" %(self.signaltp))
+		else:
+			return 0
+
 
 	def OrbToStr(self, orbpos):
 		if orbpos > 1800:
