@@ -2006,14 +2006,15 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 1000
 						self.signaltp1 = Dvbcsvb.fe.getStatus()
 						self.signaltp2 = Dvbcsvb.fe.getSignalStrength()
-
+				if self.signaltp != 0:
+					print("#######--2010--Blindscan self.signaltp =", self.signaltp) 
+					if self.signaltp < 0 or self.signaltp > 30:
+						self.signaltp = 0
+					return "%.2f" %(self.signaltp)
+				else:
+					return 0
 		except:
 			pass
-		if self.signaltp != 0:				
-			return "%.2f" %(self.signaltp)
-		else:				
-			return 0
-		self.signaltp = 0
 
 	def OrbToStr(self, orbpos):
 		if orbpos > 1800:
