@@ -366,7 +366,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.signaltp2 = 0
 		self.signaltp4 = 0
 		self.freq =""
-		self.cannotrun = False
+#		self.cannotrun = False
 		# run command
 		self.cmd = ""
 		self.bsTimer = eTimer()
@@ -783,12 +783,13 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 
 
 	def newConfig(self):
-		self.cannotrun = True
+#		self.cannotrun = True
 		self.signaltp = 0
+		self.signaltp4 = 0
 		cur = self["config"].getCurrent()
 		print("[Blindscan][newConfig] cur is", cur)
 		if config.blindscan.motor_start.value == True:
-			self.cannotrun = False
+#			self.cannotrun = False
 			orb_pos = self.getOrbPos()
 			tps = nimmanager.getTransponders(orb_pos)
 			if len(tps) >= 1:
@@ -811,14 +812,12 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		from threading import Timer
 		ts = Timer(.05, self.newConfig)
 		ts.start()
-		self["rotorstatus"].setText("")
 
 	def keyRight(self):
 		ConfigListScreen.keyRight(self)
 		from threading import Timer
 		ts = Timer(.05, self.newConfig)
 		ts.start()
-		self["rotorstatus"].setText("")
 
 	def saveConfig(self):
 		for x in self["config"].list:
@@ -831,13 +830,13 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			self.clockTimer.stop()
 		self.statusTimer.stop()
 		self.releaseFrontend()
-#		self.openFrontend() #self.openFrontend():
-		print("#### 834----BlindScanSessionClose! self.openFrontend")
+#		self.openFrontend()
 		self.session.nav.playService(self.session.postScanService)
 		self.close(False)
 
 	def keyGo(self):
 		self.signaltp4 = 1
+		self.getSignalLock()
 		self.saveConfig()
 		print("[Blindscan][keyGo] started")
 		self.start_time = time()
@@ -1205,7 +1204,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			else:
 				self.session.open(MessageBox, _("Not found blind scan utility '%s'!") % tools, MessageBox.TYPE_ERROR)
 				return
-		elif BOX_NAME.startswith("sf8008"):
+		elif BOX_NAME.startswith("sf8008"): # Set a fake orbit of 2100
 			tools = "/usr/bin/octagon-blindscan"
 			if os.path.exists(tools):
 				cmd = "octagon-blindscan %d %d %d %d %d %d %d %d %d 2100" % (temp_start_int_freq, temp_end_int_freq, config.blindscan.start_symbol.value, config.blindscan.stop_symbol.value, tab_pol[pol], tab_hilow[band], self.feid, self.getNimSocket(self.feid), self.is_c_band_scan)
@@ -1891,7 +1890,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			idx_selected_sat = int(self.getSelectedSatIndex(self.scan_nims.value))
 			tmp_list = [self.satList[int(self.scan_nims.value)][self.scan_satselection[idx_selected_sat].index]]
 			orb = tmp_list[0][0]
-#			print("[Blindscan][getOrbPos] orb = ", orb)
 		except:
 			orb = -9999
 			print("[Blind scan][getOrbPos] error parsing orb")
@@ -1899,10 +1897,8 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 
 	def startScanCallback(self, answer=True):
 		self.releaseFrontend()
-#		self.session.nav.playService(self.session.postScanService)
 		if answer:
 			print("######---1903--Blindscan--startScanCallback -- Answered")
-#			self.releaseFrontend()
 			self.session.nav.playService(self.session.postScanService)
 			self.close(True)
 
@@ -1941,8 +1937,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		return True
 
 	def getSignalLock(self):
-		self["rotorstatus"].setText("")
-		self.signaltp = 0
 		self.signaltp1 = 0
 		self.signaltp2 = 0
 		import time
@@ -1959,13 +1953,12 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				config.misc.lastrotorposition.value = self.orb_pos
 				config.misc.lastrotorposition.save()
 			if self.orb_pos_now != orb_pos or self.signaltp4 == 1:
-				print("########1961-Blindscan---rotorstatus = None! (Break), self.orb_pos_now, orb_pos, self.signaltp4", self.orb_pos_now, orb_pos, self.signaltp4)
+				print("########1964-Blindscan---rotorstatus = None! (Break), self.orb_pos_now, orb_pos, self.signaltp4", self.orb_pos_now, orb_pos, self.signaltp4)
 				break
 			try:
 				if self.orb_pos_now == orb_pos:
 					text = _("%.1fW - %s(db)" %(orb_pos, self.getSignalStats()))
 					self["rotorstatus"].setText(text)
-					self.signaltp = 0
 				else:
 					self["rotorstatus"].setText("")
 			except:
@@ -1973,8 +1966,9 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 
 	def getSignalStats(self):
 		try:
-			self.signaltp = 0
-			for x in range(1):
+			import time
+			time.sleep(.2)	
+			for x in range(10):
 				if self.feid == 0:
 					if BOX_MODEL != "edision":
 						self.signaltp = Dvbcsva.fe.getSignalNoiseRatio() / 100
