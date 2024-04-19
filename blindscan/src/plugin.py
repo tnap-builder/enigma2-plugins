@@ -397,7 +397,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self["key_red"] = Label(_("Exit"))
 		self["key_yellow"] = Label("")
 		self["key_green"] = Label("")
-		self["key_blue"] = Label("")
+		self["key_blue"] = Label(_(""))
 
 		if self.scan_nims.value is not None and self.scan_nims.value != "": # self.scan_nims set in createConfig()
 			self["key_green"].setText(_("Start scan"))
@@ -662,8 +662,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				root_id = nimmanager.sec.getRoot(n.slot_id, int(n.config.connectedTo.value))
 				if n.type == nimmanager.nim_slots[root_id].type: # check if connected from a DVB-S to DVB-S2 Nim or vice versa
 					continue
-			if n.description.startswith("SAT>IP"):
-				continue
 			nim_list.append((str(n.slot), n.friendly_full_description))
 		self.scan_nims = ConfigSelection(choices=nim_list)
 
@@ -785,13 +783,11 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 
 
 	def newConfig(self):
-#		self.cannotrun = True
-		self.signaltp = 0
 		self.signaltp4 = 0
 		cur = self["config"].getCurrent()
 		print("[Blindscan][newConfig] cur is", cur)
 		if config.blindscan.motor_start.value == True:
-#			self.cannotrun = False
+			self.createSetup()
 			orb_pos = self.getOrbPos()
 			tps = nimmanager.getTransponders(orb_pos)
 			if len(tps) >= 1:
@@ -802,8 +798,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				self.orb_pos_now = 3600 - orb
 				self.orb_pos_now = self.orb_pos_now /10
 				self.tuner.tune(transponder)
-		if cur and (cur == self.tunerEntry or cur == self.satelliteEntry or cur == self.onlyUnknownTpsEntry or cur == self.userDefinedLnbInversionEntry):
-			self.createSetup()
 		self.setBlueText()
 		config.blindscan.motor_start.value = False
 		self.getSignalLock()
@@ -832,7 +826,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			self.clockTimer.stop()
 		self.statusTimer.stop()
 		self.releaseFrontend()
-#		self.openFrontend()
 		self.session.nav.playService(self.session.postScanService)
 		self.close(False)
 
@@ -965,7 +958,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			band = self.total_list[self.running_count][2]
 			self.prepareScanData(orb, pol, band, True)
 		else:
-			self.clockTimer.start(500)
+			self.clockTimer.start(1000)
 
 	def doClock(self):
 		is_scan = False
@@ -1673,8 +1666,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 
 		x = 0
 		for transponders in tplist:
-#			if tplist[x].system == 0: # convert DVB-S transponders to auto fec as for some reason the tuner incorrectly returns 3/4 FEC for all transmissions
-#				tplist[x].fec = 0
 			if int(config.blindscan.polarization.value) == eDVBFrontendParametersSatellite.Polarisation_CircularRight: # Return circular transponders to correct polarisation
 				tplist[x].polarisation = eDVBFrontendParametersSatellite.Polarisation_CircularRight
 			elif int(config.blindscan.polarization.value) == eDVBFrontendParametersSatellite.Polarisation_CircularLeft: # Return circular transponders to correct polarisation
@@ -1822,8 +1813,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 
 	def SatBandCheck(self):
 		# search for LNB type in Universal, C band, or user defined.
-		if self.scan_nims.value is None or self.scan_nims.value == "":
-			return False
 		cur_orb_pos = self.getOrbPos()
 		self.is_c_band_scan = False
 		self.is_c_band_5750_scan = False
@@ -1875,7 +1864,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			elif lof == "circular_lnb": # lnb for use at positions 360 and 560
 				self.user_defined_lnb_lo_freq = self.circular_lnb_lo_freq
 				self.user_defined_lnb_scan = True
-				self.suggestedPolarisation = _("circular left/right")
+				self.suggestedPolarisation = _("vertical and horizontal")
 				return True
 			return False # LNB type not supported by this plugin
 		elif nimconfig.configMode.getValue() == "simple" and nimconfig.diseqcMode.value == "single" and cur_orb_pos in (360, 560) and nimconfig.simpleDiSEqCSetCircularLNB.value:
@@ -1925,15 +1914,11 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		tps = nimmanager.getTransponders(orb_pos)
 		if len(tps) < 1:
 			return False
-#		if Lastrotorposition is not None and config.misc.lastrotorposition.value != 9999:
-#			text = _("Rotor: ") + self.OrbToStr(config.misc.lastrotorposition.value)
-#			self["rotorstatus"].setText(text)
 		# freq, sr, pol, fec, inv, orb, sys, mod, roll, pilot, MIS, pls_mode, pls_code, t2mi
 		transponder = (tps[0][1] // 1000, tps[0][2] // 1000, tps[0][3], tps[0][4], 2, orb_pos, tps[0][5], tps[0][6], tps[0][8], tps[0][9], eDVBFrontendParametersSatellite.No_Stream_Id_Filter, eDVBFrontendParametersSatellite.PLS_Gold, eDVBFrontendParametersSatellite.PLS_Default_Gold_Code, eDVBFrontendParametersSatellite.No_T2MI_PLP_Id, eDVBFrontendParametersSatellite.T2MI_Default_Pid)
 		if not self.prepareFrontend():
 			print("[Blindscan][startDishMovingIfRotorSat] self.prepareFrontend() failed")
 			return False
-#		self.tuner.tune(transponder)
 		self.orb_pos = orb_pos
 		if Lastrotorposition is not None and config.misc.lastrotorposition.value != 9999:
 			self.statusTimer.stop()
@@ -2023,11 +2008,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			if self.orb_pos != 0 and self.orb_pos != config.misc.lastrotorposition.value:
 				config.misc.lastrotorposition.value = self.orb_pos
 				config.misc.lastrotorposition.save()
-#			text = _("Moving to ") + self.OrbToStr(self.orb_pos)
-#			self.startStatusTimer()
-#		else:
-#			text = _("Rotor:---Test ") + self.OrbToStr(config.misc.lastrotorposition.value)
-#		self["rotorstatus"].setText(text)
 
 	def startStatusTimer(self):
 		self.statusTimer.start(1000, True)
