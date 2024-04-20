@@ -798,6 +798,8 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				self.orb_pos_now = 3600 - orb
 				self.orb_pos_now = self.orb_pos_now /10
 				self.tuner.tune(transponder)
+		if cur and (cur == self.tunerEntry or cur == self.satelliteEntry or cur == self.onlyUnknownTpsEntry or cur == self.userDefinedLnbInversionEntry or config.blindscan.motor_start.value == True):
+			self.createSetup()
 		self.setBlueText()
 		config.blindscan.motor_start.value = False
 		self.getSignalLock()
