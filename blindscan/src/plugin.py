@@ -573,6 +573,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		return True
 
 	def createConfig(self):
+		self.signaltp4 = 0
 		self.feinfo = None
 		frontendData = None
 		defaultSat = {
