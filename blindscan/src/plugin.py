@@ -1064,7 +1064,6 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			else:
 				status_box_start_freq = self.blindscan_start_frequency + (self.user_defined_lnb_lo_freq - self.universal_lo_freq["low"])
 				status_box_end_freq = self.blindscan_stop_frequency + (self.user_defined_lnb_lo_freq - self.universal_lo_freq["low"])
-
 		else:
 			if tab_hilow[band]:
 				if self.blindscan_start_frequency < uni_lnb_cutoff:
@@ -1080,6 +1079,9 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				temp_start_int_freq = self.blindscan_start_frequency - self.universal_lo_freq[band]
 			status_box_start_freq = temp_start_int_freq + self.universal_lo_freq[band]
 			status_box_end_freq = temp_end_int_freq + self.universal_lo_freq[band]
+		if self.user_defined_lnb_scan:
+			self.start_freq = status_box_start_freq  # Start Freq. key for ServiceScan
+			self.end_freq = status_box_end_freq  # End Freq. key for ServiceScan
 
 		cmd = ""
 		self.cmd = ""
@@ -1262,11 +1264,11 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 			self.tmpstr = tmpmes
 		else:
 			tmpmes = _("Tp count = (%d)   Scan Steps = %d of %d --%s\nSatellite: %s\nSearching: %d - %d MHz (%d - %d SR) ") %(len(self.tmp_tplist), self.running_count, self.max_count, display_pol, orb[1], status_box_start_freq, status_box_end_freq, config.blindscan.start_symbol.value, config.blindscan.stop_symbol.value)
-		self.start_freq = self.blindscan_start_frequency # Start Freq. key for ServiceScan
-		self.end_freq = self.blindscan_stop_frequency # Stop freq. key for ServiceScan
+		if not self.user_defined_lnb_scan:
+			self.start_freq = self.blindscan_start_frequency # Start Freq. key for ServiceScan
+			self.end_freq = self.blindscan_stop_frequency # Stop freq. key for ServiceScan
 		tuner = nimmanager.nim_slots[self.feid].friendly_full_description
 		tmpmes2 = _("Looking for available transponders.\n \n" + tuner + "\n \n")
-
 		if is_scan:
 			self.blindscan_session = self.session.openWithCallback(self.blindscanSessionClose, BlindscanState, tmpmes, tmpmes2, [])
 		else:
@@ -1733,8 +1735,8 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		xml.append('	Search parameters:\n')
 		xml.append('		%s\n' % (tuner))
 		xml.append('		Satellite: %s\n' % (self.sat_name))
-		xml.append('		Start frequency: %dMHz\n' % (self.blindscan_start_frequency))
-		xml.append('		Stop frequency: %dMHz\n' % (self.blindscan_stop_frequency))
+		xml.append('		Start frequency: %dMHz\n' % (self.start_freq))
+		xml.append('		Stop frequency: %dMHz\n' % (self.end_freq))
 		xml.append('		Polarization: %s\n' % (polarisation[int(config.blindscan.polarization.value)]))
 		xml.append('		Lower symbol rate: %d\n' % (config.blindscan.start_symbol.value * 1000))
 		xml.append('		Upper symbol rate: %d\n' % (config.blindscan.stop_symbol.value * 1000))
