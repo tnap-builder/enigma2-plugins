@@ -1959,6 +1959,9 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				pass
 
 	def getSignalStats(self):
+		if BOX_MODEL == "edision":
+			status = "/lib/modules/5.15.0/extra/avl6261.ko"
+			self.size = os.path.getsize(status)
 		try:
 			import time
 			time.sleep(.2)	
