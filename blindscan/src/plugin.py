@@ -1979,7 +1979,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 					if BOX_MODEL != "edision":
 						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 100
 					if BOX_MODEL == "edision":
-						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 43.357
+						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 43.357 / 100
 		except:
 			pass
 		if self.signaltp != 0:
