@@ -1959,6 +1959,8 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				pass
 
 	def getSignalStats(self):
+		self.size = 0
+		self.signaltp = 0
 		if BOX_MODEL == "edision":
 			status = "/lib/modules/5.15.0/extra/avl6261.ko"
 			self.size = os.path.getsize(status)
@@ -1969,37 +1971,20 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				if self.feid == 0:
 					if BOX_MODEL != "edision":
 						self.signaltp = Dvbcsva.fe.getSignalNoiseRatio() / 100
-						self.signaltp1 = Dvbcsva.fe.getStatus()
-						self.signaltp2 = Dvbcsva.fe.getSignalStrength()# / 1000 * 1.4
-						self.signaltp3 = Dvbcsva.fe.getBitErrorRate()# / 1000 * 1.4
 					if BOX_MODEL == "edision":
 						self.signaltp = Dvbcsva.fe.getSignalNoiseRatio() / 4456.21
-						self.signaltp1 = Dvbcsva.fe.getStatus()
-						self.signaltp2 = Dvbcsva.fe.getSignalStrength() / 819.1875
 					if BOX_MODEL == "edision" and self.size > 100000:
 						self.signaltp = Dvbcsva.fe.getSignalNoiseRatio() / 1000
-						self.signaltp1 = Dvbcsva.fe.getStatus()
-						self.signaltp2 = Dvbcsva.fe.getSignalStrength()
 				if self.feid == 1:
 					if BOX_MODEL != "edision":
 						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 100
-						self.signaltp1 = Dvbcsvb.fe.getStatus()
-						self.signaltp2 = Dvbcsvb.fe.getSignalStrength()# / 1000 * 1.4
-						self.signaltp3 = Dvbcsvb.fe.getBitErrorRate()# / 1000 * 1.4
 					if BOX_MODEL == "edision":
-						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 4456.21
-						self.signaltp1 = Dvbcsvb.fe.getStatus()
-						self.signaltp2 = Dvbcsvb.fe.getSignalStrength() / 819.1875
-					if BOX_MODEL == "edision" and self.size > 100000:
-						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 1000
-						self.signaltp1 = Dvbcsvb.fe.getStatus()
-						self.signaltp2 = Dvbcsvb.fe.getSignalStrength()
-
+						self.signaltp = Dvbcsvb.fe.getSignalNoiseRatio() / 43.357
 		except:
 			pass
 		if self.signaltp != 0:
-			if self.signaltp < 0 or self.signaltp > 30: # Get rid of nonsense values
-				return 0
+#			if self.signaltp < 0 or self.signaltp > 30: # Get rid of nonsense values
+#				return 0
 			return ("%.2f" %(self.signaltp))
 		else:
 			return 0
