@@ -1983,8 +1983,8 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		except:
 			pass
 		if self.signaltp != 0:
-#			if self.signaltp < 0 or self.signaltp > 30: # Get rid of nonsense values
-#				return 0
+			if self.signaltp < 0 or self.signaltp > 30: # Get rid of nonsense values
+				return 0
 			return ("%.2f" %(self.signaltp))
 		else:
 			return 0
