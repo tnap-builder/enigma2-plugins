@@ -169,6 +169,7 @@ defaults = {"search_type": "transponders",
 	"dont_scan_known_tps": False,
 	"disable_sync_with_known_tps": True,
 	"disable_remove_duplicate_tps": True,
+	"blindscan_user_defined_lnb_start_frequency": 11700,
 	"filter_off_adjacent_satellites": "0"}
 
 config.blindscan = ConfigSubsection()
@@ -384,7 +385,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		{
 			"ok": self.keyGo,
 			"save": self.keyGo,
-			"blue": self.resetDefaults,
+#			"blue": self.resetDefaults,
 		}, -2)
 		self["actions2"].setEnabled(False)
 
@@ -730,6 +731,8 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				return
 			else:
 				self["introduction"].setText(_("Press Green/OK to start the scan"))
+#			self.blindscan_user_defined_lnb_start_frequency = ConfigInteger(default=self.user_defined_lnb_lo_freq + self.tunerIfLimits["low"], limits=(self.user_defined_lnb_lo_freq + self.tunerIfLimits["low"], self.user_defined_lnb_lo_freq + self.tunerIfLimits["high"] - 1))
+#			self.blindscan_user_defined_lnb_stop_frequency = ConfigInteger(default=self.user_defined_lnb_lo_freq + self.tunerIfLimits["high"], limits=(self.user_defined_lnb_lo_freq + self.tunerIfLimits["low"] + 1, self.user_defined_lnb_lo_freq + self.tunerIfLimits["high"]))
 			if self.startDishMovingIfRotorSat():
 				self.dishMotorEntry = getConfigListEntry(_("Start Dish Motor"), config.blindscan.motor_start, _('Set "Start Dish Motor" to "Yes" if you have changed the satellite position in this menu and wait until motor stops before starting Blindscan. ("Start Dish Motor" defaults to "No" after Dish Move Starts.)'))
 				self.list.append(self.dishMotorEntry)				
@@ -1797,23 +1800,27 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.setBlueText()
 
 	def setBlueText(self):
+#		blindscan_user_defined_lnb_start_frequency = 11700
 		if not self.SatBandCheck():
 			self["key_blue"].setText("")
 			return
-		for key in defaults.keys():
-			if getattr(config.blindscan, key).value != defaults[key]:
-				self["key_blue"].setText(_("Restore defaults"))
-				return
-		if self.blindscan_Ku_band_start_frequency.value != self.Ku_band_freq_limits["low"] or \
-			self.blindscan_Ku_band_stop_frequency.value != self.Ku_band_freq_limits["high"] or \
-			self.blindscan_C_band_start_frequency.value != self.c_band_freq_limits["default_low"] or \
-			self.blindscan_C_band_stop_frequency.value != self.c_band_freq_limits["default_high"] or \
-			self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_start_frequency.value != self.user_defined_lnb_lo_freq + self.tunerIfLimits["low"] or \
-			self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_stop_frequency.value != self.user_defined_lnb_lo_freq + self.tunerIfLimits["high"] or \
-			self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_inverted_start_frequency.value != self.user_defined_lnb_lo_freq - self.tunerIfLimits["high"] or \
-			self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_inverted_stop_frequency.value != self.user_defined_lnb_lo_freq - self.tunerIfLimits["low"]:
-			self["key_blue"].setText(_("Restore defaults"))
-		else:
+#		for key in defaults.keys():
+#			if getattr(config.blindscan, key).value != defaults[key]:
+#				self["key_blue"].setText(_("Restore defaults"))
+#				return
+#				t
+		try:
+			if self.blindscan_Ku_band_start_frequency.value != self.Ku_band_freq_limits["low"] or \
+				self.blindscan_Ku_band_stop_frequency.value != self.Ku_band_freq_limits["high"] or \
+				self.blindscan_C_band_start_frequency.value != self.c_band_freq_limits["default_low"] or \
+				self.blindscan_C_band_stop_frequency.value != self.c_band_freq_limits["default_high"] or \
+				self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_start_frequency.value != self.user_defined_lnb_lo_freq + self.tunerIfLimits["low"] or \
+				self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_stop_frequency.value != self.user_defined_lnb_lo_freq + self.tunerIfLimits["high"] or \
+				self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_inverted_start_frequency.value != self.user_defined_lnb_lo_freq - self.tunerIfLimits["high"] or \
+				self.user_defined_lnb_scan and self.blindscan_user_defined_lnb_inverted_stop_frequency.value != self.user_defined_lnb_lo_freq - self.tunerIfLimits["low"]:
+#				self["key_blue"].setText(_("Restore defaults"))
+				self["key_blue"].setText(_(""))
+		except:
 			self["key_blue"].setText("")
 
 	def SatBandCheck(self):
