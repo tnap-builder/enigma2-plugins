@@ -373,7 +373,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.bsTimer = eTimer()
 		self.bsTimer.callback.append(self.asyncBlindScan)
 
-		ConfigListScreen.__init__(self, self.list, session=session, on_change=self.changedEntry)
+		ConfigListScreen.__init__(self, self.list, session=session, on_change=self.newConfig)
 		self["introduction"] = Label("")
 
 		self["actions"] = ActionMap(["SetupActions"],
