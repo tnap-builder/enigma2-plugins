@@ -1460,8 +1460,11 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 					self.blindscan_session["post_action"].setText(str)
 
 	def blindscanSessionNone(self, *val):
-		self.blindscan_container.sendCtrlC()
-		self.blindscan_container = None
+		try: # Added to remove early exit crash when using TBS5925
+			self.blindscan_container.sendCtrlC()
+			self.blindscan_container = None
+		except:
+			pass
 		self.blindscan_session = None
 		self.releaseFrontend()
 		if val[0] == False:
@@ -1481,6 +1484,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.blindscan_container.execute(self.cmd)
 
 	def blindscanSessionClose(self, *val):
+		msg =""
 		self.signaltp4 = 0
 		global XML_FILE
 		self["key_yellow"].setText("")
