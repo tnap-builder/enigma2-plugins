@@ -170,6 +170,7 @@ defaults = {"search_type": "transponders",
 	"disable_sync_with_known_tps": True,
 	"disable_remove_duplicate_tps": True,
 	"blindscan_user_defined_lnb_start_frequency": 11700,
+	"scan_mis": True,
 	"filter_off_adjacent_satellites": "0"}
 
 config.blindscan = ConfigSubsection()
@@ -198,29 +199,31 @@ config.blindscan.filter_off_adjacent_satellites = ConfigSelection(default=defaul
 	("1", _("up to 1 degree")),
 	("2", _("up to 2 degrees")),
 	("3", _("up to 3 degrees"))])
-
+config.blindscan.scan_mis = ConfigYesNo(default=defaults["scan_mis"])
 
 class BlindscanState(Screen, ConfigListScreen):
 	skin = """
-	<screen position="center,center" size="820,578" title="Satellite Blindscan">
-		<widget name="progress" position="10,5" size="800,85" font="Regular;19" />
-		<eLabel	position="10,95" size="800,1" backgroundColor="grey"/>
-		<widget name="config" position="10,102" size="524,425" font="Regular;18" />
-		<eLabel	position="544,95" size="1,440" backgroundColor="grey"/>
-		<widget name="post_action" position="554,102" size="256,480" font="Regular;18" halign="center"/>
-		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/red.png" position="10,573" size="100,2" alphatest="on" />
-		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/green.png" position="120,573" size="100,2" alphatest="on" />
-		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/yellow.png" position="240,573" size="100,2" alphatest="on" />
-		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/blue.png" position="360,573" size="100,2" alphatest="on" />
-		<widget source="key_red" render="Label" position="10,530" size="100,40" font="Regular;17" halign="center"/>
-		<widget source="key_green" render="Label" position="120,530" size="100,40" font="Regular;17" halign="center"/>
-		<widget source="key_yellow" render="Label" position="230,530" size="100,40" font="Regular;17" halign="center"/>
-		<widget source="key_blue" render="Label" position="340,530" size="100,40" font="Regular;17" halign="center"/>
+	<screen position="center,center" size="1280,900" title="Satellite Blindscan">
+		<widget name="progress" position="10,10" size="1260,120" font="Regular;24" />
+		<eLabel	position="10,140" size="1260,2" backgroundColor="grey"/>
+		<widget name="config" position="10,150" size="850,620" font="Regular;22" />
+		<eLabel	position="880,140" size="2,640" backgroundColor="grey"/>
+		<widget name="post_action" position="900,150" size="370,620" font="Regular;22" halign="center"/>
+		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/red.png" position="10,870" size="140,4" alphatest="on" />
+		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/green.png" position="170,870" size="140,4" alphatest="on" />
+		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/yellow.png" position="330,870" size="140,4" alphatest="on" />
+		<ePixmap pixmap="/usr/lib/enigma2/python/Plugins/SystemPlugins/Blindscan/images/blue.png" position="490,870" size="140,4" alphatest="on" />
+		<widget source="key_red" render="Label" position="10,810" size="140,60" font="Regular;24" halign="center"/>
+		<widget source="key_green" render="Label" position="170,810" size="140,60" font="Regular;24" halign="center"/>
+		<widget source="key_yellow" render="Label" position="330,810" size="140,60" font="Regular;24" halign="center"/>
+		<widget source="key_blue" render="Label" position="490,810" size="140,60" font="Regular;24" halign="center"/>
 	</screen>
 	"""
+
+
 	def __init__(self, session, progress, post_action, tp_list, finished=False):
 		Screen.__init__(self, session)
-		Screen.setTitle(self, _("Blind scan state-" + BOX_NAME))
+		Screen.setTitle(self, _("                                           Blind scan state-" + BOX_NAME))
 		self.finished = finished
 		self["progress"] = Label()
 		self["progress"].setText(progress)
@@ -779,6 +782,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 #			self.list.append(getConfigListEntry(_("Disable remove duplicates"), config.blindscan.disable_remove_duplicate_tps, _('CAUTION: If you select "yes" the scan will not remove "duplicated" transponders from the list. Default is "no". Only change this if you understand why you are doing it.')))
 			self.list.append(getConfigListEntry(_("Don't scan lamedb transponders"), config.blindscan.lamedb,_('If you select "yes" the scan will only search transponders not listed in lamedb channel file')))
 			self.list.append(getConfigListEntry(_("Filter out adjacent satellites"), config.blindscan.filter_off_adjacent_satellites, _('When a neighbouring satellite is very strong this avoids searching transponders known to be coming from the neighbouring satellite.')))
+			self.list.append(getConfigListEntry(_("Scan MIS transponders"), config.blindscan.scan_mis, _('If you select "no" the scan will skip transponders that use Multiple Input Stream technology, which speeds up scanning in regions where these are not used.')))
 			self["config"].list = self.list
 			self["config"].l.setList(self.list)
 			self["key_green"].setText(_("Scan"))
@@ -835,13 +839,87 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 		self.session.nav.playService(self.session.postScanService)
 		self.close(False)
 
+	def forceMemoryCleanup(self):
+		# Force Python garbage collection
+		import gc
+		import os
+		
+		# Log memory before cleanup
+		try:
+			with open('/proc/meminfo', 'r') as f:
+				meminfo_before = f.read()
+			cached_before = 0
+			for line in meminfo_before.split('\n'):
+				if line.startswith('Cached:'):
+					cached_before = int(line.split()[1])
+					break
+			
+			print("[Blindscan][MemoryCleanup] Before cleanup - Cached: %d kB" % cached_before)
+		except:
+			print("[Blindscan][MemoryCleanup] Failed to read memory info before cleanup")
+		
+		# Collect all generations
+		gc.collect(0)
+		gc.collect(1)
+		gc.collect(2)
+		
+		# Clear any large lists
+		if hasattr(self, 'tmp_tplist'):
+			self.tmp_tplist = None
+		if hasattr(self, 'tp_found'):
+			self.tp_found = None
+		if hasattr(self, 'total_list'):
+			self.total_list = None
+		if hasattr(self, 'full_data'):
+			self.full_data = ""
+		
+		# Release frontend explicitly
+		self.releaseFrontend()
+		
+		# Try to free system memory caches
+		try:
+			os.system('sync')  # Flush filesystem buffers
+			with open('/proc/sys/vm/drop_caches', 'w') as f:
+				f.write('3')
+				print("[Blindscan][MemoryCleanup] Cache drop command executed")
+			
+			# Verify cache was cleared by checking meminfo again
+			with open('/proc/meminfo', 'r') as f:
+				meminfo_after = f.read()
+			cached_after = 0
+			for line in meminfo_after.split('\n'):
+				if line.startswith('Cached:'):
+					cached_after = int(line.split()[1])
+					break
+			
+			print("[Blindscan][MemoryCleanup] After cleanup - Cached: %d kB" % cached_after)
+			print("[Blindscan][MemoryCleanup] Freed approximately %d kB of cache" % (cached_before - cached_after))
+			
+			# Add small delay to allow OS to reclaim memory
+			from time import sleep
+			sleep(1)
+			
+			return cached_before - cached_after  # Return the amount of memory freed
+		except Exception as e:
+			print("[Blindscan][MemoryCleanup] Error clearing caches: %s" % str(e))
+			return 0
+
 	def keyGo(self):
+		# Clear memory before starting a new scan
+		import gc
+		gc.collect()
 		self.signaltp4 = 1
 		self.getSignalLock()
 		self.saveConfig()
 		print("[Blindscan][keyGo] started")
 		self.start_time = time()
+		# Force memory cleanup before starting
+		self.forceMemoryCleanup()
+		# Reinitialize necessary lists
 		self.tp_found = []
+		self.tmp_tplist = []
+		self.total_list = []
+		self.full_data = ""
 
 		tab_pol = {
 			eDVBFrontendParametersSatellite.Polarisation_Horizontal: "horizontal",
@@ -1432,7 +1510,7 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 						parm.t2mi_plp_id = getMisPlsValue(data, 13, eDVBFrontendParametersSatellite.No_T2MI_PLP_Id)
 					if hasattr(parm, "t2mi_pid"):
 						parm.t2mi_pid = getMisPlsValue(data, 14, eDVBFrontendParametersSatellite.T2MI_Default_Pid)
-                    # when blindscan returns 0,0,0 then use defaults...
+					# when blindscan returns 0,0,0 then use defaults...
 					if parm.pls_mode == parm.is_id == parm.pls_code == 0:
 						parm.pls_mode = eDVBFrontendParametersSatellite.PLS_Gold
 						parm.is_id = eDVBFrontendParametersSatellite.No_Stream_Id_Filter
@@ -1513,7 +1591,10 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 
 			# Filter off transponders on neighbouring satellites
 			if int(config.blindscan.filter_off_adjacent_satellites.value):
-				 self.tmp_tplist = self.filterOffAdjacentSatellites(self.tmp_tplist, self.orb_position, int(config.blindscan.filter_off_adjacent_satellites.value))
+				self.tmp_tplist = self.filterOffAdjacentSatellites(self.tmp_tplist, self.orb_position, int(config.blindscan.filter_off_adjacent_satellites.value))
+
+			if not config.blindscan.scan_mis.value:
+				self.tmp_tplist = [tp for tp in self.tmp_tplist if tp.is_id <= eDVBFrontendParametersSatellite.No_Stream_Id_Filter]
 
 			# Process transponders still in list
 			if self.tmp_tplist != []:
@@ -1581,6 +1662,9 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				msg = _("The blindscan run was cancelled by the user.")
 			self.session.openWithCallback(self.callbackNone, MessageBox, msg, MessageBox.TYPE_INFO, timeout=60)
 			self.tmp_tplist = []
+		import gc
+		gc.collect()
+
 
 	def startScan(self, *retval):
 		if retval[0] == False:
@@ -1620,36 +1704,36 @@ class Blindscan(ConfigListScreen, Screen, TransponderFiltering):
 				parts = line.replace("s ", "")
 				parts = parts.split(':')				    
 				if int(parts[4]) == int(pos - 3600):
-				    parm = eDVBFrontendParametersSatellite()
-				    parm.frequency = int(parts[0])
-				    parm.symbol_rate =int(parts[1])
-				    parm.polarisation = int(parts[2])
-				    parm.fec = int(parts[3])
-				    parm.inversion = int(parts[5])
-				    parm.orbital_position = pos
-				    try:
-				        parm.system = int(parts[7])
-				        parm.modulation = int(parts[8])
-				        parm.rolloff = int(parts[9])
-				        parm.pilot = int(parts[10])
-				    except: 
-				        parm.system = eDVBFrontendParametersSatellite.System_DVB_S
-				        parm.modulation = eDVBFrontendParametersSatellite.Modulation_Auto
-				        parm.rolloff = eDVBFrontendParametersSatellite.RollOff_auto
-				        parm.pilot = eDVBFrontendParametersSatellite.Pilot_Unknown
-				    try:
-				        parm.is_id = int(parts[11])
-				        parm.pls_mode = int(parts[12])
-				        parm.pls_code = int(parts[13])
-				        parm.t2mi_plp_id = int(parts[14])
-				        parm.t2mi_pid = int(parts[15])
-				    except:
-				        parm.is_id = eDVBFrontendParametersSatellite.No_Stream_Id_Filter
-				        parm.pls_mode = eDVBFrontendParametersSatellite.PLS_Gold
-				        parm.pls_code = eDVBFrontendParametersSatellite.PLS_Default_Gold_Code
-				        parm.t2mi_plp_id = eDVBFrontendParametersSatellite.No_T2MI_PLP_Id
-				        parm.t2mi_pid = eDVBFrontendParametersSatellite.T2MI_Default_Pid			
-				    tlist.append(parm)
+					parm = eDVBFrontendParametersSatellite()
+					parm.frequency = int(parts[0])
+					parm.symbol_rate =int(parts[1])
+					parm.polarisation = int(parts[2])
+					parm.fec = int(parts[3])
+					parm.inversion = int(parts[5])
+					parm.orbital_position = pos
+					try:
+						parm.system = int(parts[7])
+						parm.modulation = int(parts[8])
+						parm.rolloff = int(parts[9])
+						parm.pilot = int(parts[10])
+					except: 
+						parm.system = eDVBFrontendParametersSatellite.System_DVB_S
+						parm.modulation = eDVBFrontendParametersSatellite.Modulation_Auto
+						parm.rolloff = eDVBFrontendParametersSatellite.RollOff_auto
+						parm.pilot = eDVBFrontendParametersSatellite.Pilot_Unknown
+					try:
+						parm.is_id = int(parts[11])
+						parm.pls_mode = int(parts[12])
+						parm.pls_code = int(parts[13])
+						parm.t2mi_plp_id = int(parts[14])
+						parm.t2mi_pid = int(parts[15])
+					except:
+						parm.is_id = eDVBFrontendParametersSatellite.No_Stream_Id_Filter
+						parm.pls_mode = eDVBFrontendParametersSatellite.PLS_Gold
+						parm.pls_code = eDVBFrontendParametersSatellite.PLS_Default_Gold_Code
+						parm.t2mi_plp_id = eDVBFrontendParametersSatellite.No_T2MI_PLP_Id
+						parm.t2mi_pid = eDVBFrontendParametersSatellite.T2MI_Default_Pid			
+					tlist.append(parm)
 		lamedb.close()	
 		return tlist
 
